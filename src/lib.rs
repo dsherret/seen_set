@@ -21,10 +21,7 @@ use hashbrown::HashTable;
 ///
 /// Note: This will be slower for values like numbers. Just use a regular
 /// HashSet for that.
-pub struct SeenSet<
-  T: std::hash::Hash + ?Sized,
-  TValueHasher = RandomState,
-> {
+pub struct SeenSet<T: std::hash::Hash + ?Sized, TValueHasher = RandomState> {
   _kind: PhantomData<T>,
   value_hasher: TValueHasher,
   checked_table: hashbrown::HashTable<u64>,
@@ -52,10 +49,8 @@ impl<T: std::hash::Hash + ?Sized, TValueHasher> std::fmt::Debug
   }
 }
 
-impl<
-    T: std::hash::Hash + ?Sized,
-    TValueHasher: Default,
-  > Default for SeenSet<T, TValueHasher>
+impl<T: std::hash::Hash + ?Sized, TValueHasher: Default> Default
+  for SeenSet<T, TValueHasher>
 {
   fn default() -> Self {
     Self {
@@ -89,10 +84,8 @@ impl<T: std::hash::Hash + ?Sized, TValueHasher> SeenSet<T, TValueHasher> {
   }
 }
 
-impl<
-    T: std::hash::Hash + ?Sized,
-    TValueHasher: BuildHasher,
-  > SeenSet<T, TValueHasher>
+impl<T: std::hash::Hash + ?Sized, TValueHasher: BuildHasher>
+  SeenSet<T, TValueHasher>
 {
   /// Check if the set contains the value.
   pub fn contains(&mut self, value: &T) -> bool {
@@ -114,7 +107,7 @@ impl<
       hashbrown::hash_table::Entry::Vacant(entry) => {
         entry.insert(hash);
         true
-      },
+      }
     }
   }
 

@@ -56,7 +56,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     let strings = create_strings(i);
     let mut group = c.benchmark_group(i.to_string());
     group.bench_function("SeenSet", |b| b.iter(|| seen_set(&strings)));
-    group.bench_function("HashSet (Clone)", |b| b.iter(|| hash_set_clone(&strings)));
+    group.bench_function("HashSet (Clone)", |b| {
+      b.iter(|| hash_set_clone(&strings))
+    });
     group.bench_function("HashSet (Reference)", |b| {
       b.iter(|| hash_set_ref(&strings))
     });

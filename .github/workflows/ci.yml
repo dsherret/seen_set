@@ -34,7 +34,6 @@ jobs:
       - name: Format
         run: |
           cargo fmt --all -- --check
-          deno fmt --check
 
       - name: Lint
         run: |
