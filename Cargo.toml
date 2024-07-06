@@ -1,0 +1,17 @@
+[package]
+name = "seen_set"
+version = "0.1.0"
+edition = "2021"
+description = "HashSet that doesn't store values."
+authors = ["David Sherret"]
+license = "MIT"
+repository = "https://github.com/dsherret/seen_set"
+
+[[bench]]
+name = "benchmark"
+harness = false
+
+[dependencies]
+
+[dev-dependencies]
+criterion = { version = "0.4" }
