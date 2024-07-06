@@ -6,9 +6,9 @@ use criterion::Criterion;
 
 use seen_set::SeenSet;
 
-fn create_strings() -> Vec<String> {
+fn create_strings(size: usize) -> Vec<String> {
   (0..1000)
-    .map(|i| i.to_string().repeat(i).repeat(10))
+    .map(|i| format!("{}{}", "1".repeat(size), i))
     .collect()
 }
 
@@ -52,12 +52,15 @@ fn hash_set_ref(strings: &[String]) {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-  let strings = create_strings();
-  c.bench_function("SeenSet", |b| b.iter(|| seen_set(&strings)));
-  c.bench_function("HashSet (Clone)", |b| b.iter(|| hash_set_clone(&strings)));
-  c.bench_function("HashSet (Reference)", |b| {
-    b.iter(|| hash_set_ref(&strings))
-  });
+  for i in [1, 10, 100, 1_000, 10_000] {
+    let strings = create_strings(i);
+    let mut group = c.benchmark_group(i.to_string());
+    group.bench_function("SeenSet", |b| b.iter(|| seen_set(&strings)));
+    group.bench_function("HashSet (Clone)", |b| b.iter(|| hash_set_clone(&strings)));
+    group.bench_function("HashSet (Reference)", |b| {
+      b.iter(|| hash_set_ref(&strings))
+    });
+  }
 }
 
 criterion_group!(benches, criterion_benchmark);

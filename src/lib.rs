@@ -1,7 +1,8 @@
-use std::collections::HashSet;
 use std::hash::BuildHasher;
 use std::hash::RandomState;
 use std::marker::PhantomData;
+
+use hashbrown::HashTable;
 
 /// A HashSet that doesn't store values, but instead only stores hashes.
 ///
@@ -23,31 +24,30 @@ use std::marker::PhantomData;
 pub struct SeenSet<
   T: std::hash::Hash + ?Sized,
   TValueHasher = RandomState,
-  THashHasher = RandomState,
 > {
   _kind: PhantomData<T>,
   value_hasher: TValueHasher,
-  checked: HashSet<u64, THashHasher>,
+  checked_table: hashbrown::HashTable<u64>,
 }
 
-impl<T: std::hash::Hash + ?Sized, TValueHasher: Clone, THashHasher: Clone> Clone
-  for SeenSet<T, TValueHasher, THashHasher>
+impl<T: std::hash::Hash + ?Sized, TValueHasher: Clone> Clone
+  for SeenSet<T, TValueHasher>
 {
   fn clone(&self) -> Self {
     Self {
       _kind: Default::default(),
       value_hasher: self.value_hasher.clone(),
-      checked: self.checked.clone(),
+      checked_table: self.checked_table.clone(),
     }
   }
 }
 
-impl<T: std::hash::Hash + ?Sized, TValueHasher, THashHasher> std::fmt::Debug
-  for SeenSet<T, TValueHasher, THashHasher>
+impl<T: std::hash::Hash + ?Sized, TValueHasher> std::fmt::Debug
+  for SeenSet<T, TValueHasher>
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("CheckedSet")
-      .field("checked", &self.checked)
+      .field("checked", &self.checked_table)
       .finish()
   }
 }
@@ -55,14 +55,13 @@ impl<T: std::hash::Hash + ?Sized, TValueHasher, THashHasher> std::fmt::Debug
 impl<
     T: std::hash::Hash + ?Sized,
     TValueHasher: Default,
-    THashHasher: Default,
-  > Default for SeenSet<T, TValueHasher, THashHasher>
+  > Default for SeenSet<T, TValueHasher>
 {
   fn default() -> Self {
     Self {
       _kind: Default::default(),
       value_hasher: Default::default(),
-      checked: Default::default(),
+      checked_table: Default::default(),
     }
   }
 }
@@ -73,31 +72,19 @@ impl<T: std::hash::Hash + ?Sized> SeenSet<T, RandomState> {
   }
 
   pub fn with_capacity(capacity: usize) -> Self {
-    Self::with_capacity_and_value_hasher(capacity, Default::default())
+    Self::with_capacity_and_hasher(capacity, Default::default())
   }
 }
 
 impl<T: std::hash::Hash + ?Sized, TValueHasher> SeenSet<T, TValueHasher> {
-  pub fn with_capacity_and_value_hasher(
+  pub fn with_capacity_and_hasher(
     capacity: usize,
     value_hasher: TValueHasher,
-  ) -> Self {
-    Self::with_capacity_and_hashers(capacity, value_hasher, Default::default())
-  }
-}
-
-impl<T: std::hash::Hash + ?Sized, TValueHasher, THashHasher>
-  SeenSet<T, TValueHasher, THashHasher>
-{
-  pub fn with_capacity_and_hashers(
-    capacity: usize,
-    value_hasher: TValueHasher,
-    hash_hasher: THashHasher,
   ) -> Self {
     Self {
       _kind: PhantomData,
       value_hasher,
-      checked: HashSet::with_capacity_and_hasher(capacity, hash_hasher),
+      checked_table: HashTable::with_capacity(capacity),
     }
   }
 }
@@ -105,18 +92,30 @@ impl<T: std::hash::Hash + ?Sized, TValueHasher, THashHasher>
 impl<
     T: std::hash::Hash + ?Sized,
     TValueHasher: BuildHasher,
-    THashHasher: BuildHasher,
-  > SeenSet<T, TValueHasher, THashHasher>
+  > SeenSet<T, TValueHasher>
 {
   /// Check if the set contains the value.
   pub fn contains(&mut self, value: &T) -> bool {
-    self.checked.contains(&self.get_hash(value))
+    let hash = self.get_hash(value);
+    let hasher = |val: &_| self.value_hasher.hash_one(val);
+    match self.checked_table.entry(hash, |key| key == &hash, hasher) {
+      hashbrown::hash_table::Entry::Occupied(_) => true,
+      hashbrown::hash_table::Entry::Vacant(_) => false,
+    }
   }
 
   /// Inserts a hash of the value into the set returning `true`
   /// if never seen before or `false` otherwise.
   pub fn insert(&mut self, value: &T) -> bool {
-    self.checked.insert(self.get_hash(value))
+    let hash = self.get_hash(value);
+    let hasher = |val: &_| self.value_hasher.hash_one(val);
+    match self.checked_table.entry(hash, |key| key == &hash, hasher) {
+      hashbrown::hash_table::Entry::Occupied(_) => false,
+      hashbrown::hash_table::Entry::Vacant(entry) => {
+        entry.insert(hash);
+        true
+      },
+    }
   }
 
   #[inline]
