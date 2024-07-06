@@ -2,6 +2,10 @@
 
 A HashSet that doesn't store values, but instead only stores hashes.
 
+Due to its nature, this is unsafe because it doesn't handle hash collisions, but
+it maybe by useful in scenarios where that's tolerable (ex. some caching
+scenarios).
+
 This is useful when you only need to tell if you've seen a value before and you
 don't want to clone the value for performance reasons.
 
